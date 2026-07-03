@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, CalendarDays, Home, GraduationCap, Wallet, Award,
   Package, FileText, Settings, Plus, Search, X, Edit2, Trash2, ChevronRight,
   ChevronLeft, AlertTriangle, CheckCircle2, Clock, Phone, Mail, TrendingUp,
-  Syringe, Hammer, Stethoscope, MapPin, Filter, Save, ArrowUpRight, ArrowDownRight
+  Syringe, Hammer, Stethoscope, MapPin, Filter, Save, ArrowUpRight, ArrowDownRight, Menu
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, LineChart, Line } from 'recharts';
 
@@ -104,7 +104,7 @@ function SectionHeader({ eyebrow, title, action }) {
 }
 
 function Card({ children, className = '', style = {} }) {
-  return <div className={`rounded-2xl border ${className}`} style={{ borderColor: T.line, background: T.card, ...style }}>{children}</div>;
+  return <div className={`rounded-2xl border transition-shadow duration-200 ${className}`} style={{ borderColor: T.line, background: T.card, ...style }}>{children}</div>;
 }
 
 function SearchBox({ value, onChange, placeholder }) {
@@ -136,8 +136,8 @@ function Modal({ title, onClose, children, wide }) {
     return () => window.removeEventListener('keydown', onEsc);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(22,36,28,0.55)' }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`bg-white rounded-2xl shadow-2xl w-full ${wide ? 'max-w-2xl' : 'max-w-md'} max-h-[88vh] overflow-y-auto`}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 eq-overlay" style={{ background: 'rgba(22,36,28,0.55)' }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className={`bg-white rounded-2xl shadow-2xl w-full eq-modal-panel ${wide ? 'max-w-2xl' : 'max-w-md'} max-h-[88vh] overflow-y-auto`}>
         <div className="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white rounded-t-2xl" style={{ borderColor: T.line }}>
           <h3 className="font-serif text-xl" style={{ color: T.ink }}>{title}</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400"><X size={18} /></button>
@@ -192,7 +192,7 @@ const NAV = [
   { key: 'cavalli', label: 'Cavalli', icon: HorseshoeMark },
   { key: 'calendario', label: 'Calendario & Lezioni', icon: CalendarDays },
   { key: 'istruttori', label: 'Istruttori', icon: GraduationCap },
-  { key: 'box', label: 'Box & Pensioni', icon: Home },
+  { key: 'box', label: 'Box & Paddock', icon: Home },
   { key: 'fatturazione', label: 'Fatturazione', icon: Wallet },
   { key: 'eventi', label: 'Gare & Eventi', icon: Award },
   { key: 'magazzino', label: 'Magazzino', icon: Package },
@@ -200,9 +200,11 @@ const NAV = [
   { key: 'impostazioni', label: 'Impostazioni', icon: Settings },
 ];
 
-function Sidebar({ active, setActive, impostazioni, alerts, role, onLogout }) {
+function Sidebar({ active, setActive, impostazioni, alerts, role, onLogout, open, onClose }) {
   return (
-    <div className="w-64 shrink-0 h-screen sticky top-0 flex flex-col" style={{ background: T.forest }}>
+    <>
+      {open && <div className="fixed inset-0 z-30 md:hidden" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={onClose} />}
+      <div className={`w-64 shrink-0 h-screen flex flex-col fixed md:sticky top-0 z-40 transition-transform duration-200 md:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`} style={{ background: T.forest }}>
       <div className="px-5 pt-6 pb-5 flex items-center gap-3 border-b" style={{ borderColor: T.forestLine }}>
         <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: T.brass }}>
           <HorseshoeMark size={20} color="#16241C" />
@@ -237,13 +239,14 @@ function Sidebar({ active, setActive, impostazioni, alerts, role, onLogout }) {
           <button onClick={onLogout} className="text-[11px] font-semibold" style={{ color: T.brassLight }}>Esci</button>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
 /* ============================= DASHBOARD ============================= */
 function Dashboard({ data, setActive, role }) {
-  const { clienti, cavalli, lezioni, fatture, box, istruttori } = data;
+  const { clienti, cavalli, lezioni, fatture, box, istruttori, documenti } = data;
 
   const kpis = useMemo(() => {
     const sociAttivi = clienti.filter((c) => c.stato === 'attivo').length;
@@ -273,9 +276,14 @@ function Dashboard({ data, setActive, role }) {
       const fer = h.ferrature[h.ferrature.length - 1];
       if (fer) items.push({ tipo: 'Ferratura', chi: h.nome, data: fer.prossima, icon: Hammer });
     });
-    clienti.forEach((c) => { if (c.certMedico) items.push({ tipo: 'Certificato medico', chi: `${c.nome} ${c.cognome}`, data: c.certMedico, icon: Stethoscope }); });
-    return items.map((it) => ({ ...it, giorni: daysUntil(it.data) })).sort((a, b) => a.giorni - b.giorni).slice(0, 7);
-  }, [cavalli, clienti]);
+    clienti.forEach((c) => {
+      if (c.certMedico) items.push({ tipo: 'Certificato medico', chi: `${c.nome} ${c.cognome}`, data: c.certMedico, icon: Stethoscope });
+      if (c.scadenzaFise) items.push({ tipo: 'Tesseramento FISE', chi: `${c.nome} ${c.cognome}`, data: c.scadenzaFise, icon: Award });
+    });
+    istruttori.forEach((ist) => { if (ist.scadenzaBrevetto) items.push({ tipo: 'Brevetto istruttore', chi: `${ist.nome} ${ist.cognome}`, data: ist.scadenzaBrevetto, icon: GraduationCap }); });
+    documenti.forEach((doc) => { if (doc.scadenza) items.push({ tipo: doc.tipo, chi: doc.nome, data: doc.scadenza, icon: FileText }); });
+    return items.map((it) => ({ ...it, giorni: daysUntil(it.data) })).sort((a, b) => a.giorni - b.giorni).slice(0, 8);
+  }, [cavalli, clienti, istruttori, documenti]);
 
   const lezioniOggiList = useMemo(() => {
     const oggi = todayISO();
@@ -299,10 +307,10 @@ function Dashboard({ data, setActive, role }) {
           ...(role === 'owner' ? [{ label: 'Incasso mese', value: euro(kpis.incassoMese), onClick: () => setActive('fatturazione'), mono: true }] : []),
           { label: 'Box occupati', value: `${kpis.boxOccupati}/${kpis.boxTot}`, onClick: () => setActive('box') },
         ].map((k, i) => (
-          <Card key={i} className="p-5 cursor-pointer hover:shadow-md transition-shadow" style={{}}>
-            <button onClick={k.onClick} className="text-left w-full">
-              <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: T.inkSoft }}>{k.label}</div>
-              <div className={`text-3xl ${k.mono ? 'font-mono' : 'font-serif'}`} style={{ color: T.ink }}>{k.value}</div>
+          <Card key={i} className="p-5 cursor-pointer hover:shadow-md transition-shadow">
+            <button onClick={k.onClick} className="text-left w-full flex flex-col">
+              <div className="text-xs font-semibold uppercase tracking-wide mb-2 min-h-[2rem]" style={{ color: T.inkSoft }}>{k.label}</div>
+              <div className="text-3xl font-serif leading-none" style={{ color: T.ink, fontVariantNumeric: 'tabular-nums' }}>{k.value}</div>
             </button>
           </Card>
         ))}
@@ -378,7 +386,7 @@ function Dashboard({ data, setActive, role }) {
 
 /* ============================= SOCI ============================= */
 function ClienteForm({ initial, onSave, onCancel, cavalli }) {
-  const [f, setF] = useState(initial || { nome: '', cognome: '', email: '', telefono: '', tessera: 'Base', dataIscrizione: todayISO(), certMedico: '', cavalliIds: [], stato: 'attivo', note: '' });
+  const [f, setF] = useState(initial ? { tesseraFise: '', patenteFise: 'Nessuna', scadenzaFise: '', ...initial } : { nome: '', cognome: '', email: '', telefono: '', tessera: 'Base', dataIscrizione: todayISO(), certMedico: '', cavalliIds: [], stato: 'attivo', note: '', tesseraFise: '', patenteFise: 'Nessuna', scadenzaFise: '' });
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   return (
     <div>
@@ -402,6 +410,15 @@ function ClienteForm({ initial, onSave, onCancel, cavalli }) {
           </select>
         </Field>
         <Field label="Scad. certificato medico"><input type="date" className={inputCls} style={inputStyle} value={f.certMedico} onChange={(e) => set('certMedico', e.target.value)} /></Field>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Patente FISE">
+          <select className={inputCls} style={inputStyle} value={f.patenteFise} onChange={(e) => set('patenteFise', e.target.value)}>
+            <option>Nessuna</option><option>Patente A</option><option>Autorizzazione Pony</option><option>Brevetto B</option><option>1° grado</option><option>2° grado</option>
+          </select>
+        </Field>
+        <Field label="N. tessera FISE"><input className={inputCls} style={inputStyle} value={f.tesseraFise} onChange={(e) => set('tesseraFise', e.target.value)} /></Field>
+        <Field label="Scad. tesseramento"><input type="date" className={inputCls} style={inputStyle} value={f.scadenzaFise} onChange={(e) => set('scadenzaFise', e.target.value)} /></Field>
       </div>
       <Field label="Cavalli associati">
         <div className="flex flex-wrap gap-2">
@@ -466,10 +483,10 @@ function Soci({ data, mutate }) {
       </div>
 
       <Card className="overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="text-left" style={{ background: T.paper }}>
-              {['Socio', 'Contatti', 'Tessera', 'Cavalli', 'Cert. medico', 'Stato', ''].map((h) => (
+              {['Socio', 'Contatti', 'Tessera', 'FISE', 'Cavalli', 'Cert. medico', 'Stato', ''].map((h) => (
                 <th key={h} className="px-5 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: T.inkSoft }}>{h}</th>
               ))}
             </tr>
@@ -488,6 +505,14 @@ function Soci({ data, mutate }) {
                     <div className="flex items-center gap-1.5 mt-0.5"><Phone size={12} />{c.telefono}</div>
                   </td>
                   <td className="px-5 py-3"><Pill tone="brass">{c.tessera}</Pill></td>
+                  <td className="px-5 py-3">
+                    {c.patenteFise && c.patenteFise !== 'Nessuna' ? (
+                      <div>
+                        <div className="text-xs font-medium" style={{ color: T.ink }}>{c.patenteFise}{c.tesseraFise ? ` · ${c.tesseraFise}` : ''}</div>
+                        {c.scadenzaFise && <Pill tone={urgencyTone(daysUntil(c.scadenzaFise))}>{urgencyLabel(daysUntil(c.scadenzaFise))}</Pill>}
+                      </div>
+                    ) : <span className="text-xs" style={{ color: T.inkSoft }}>—</span>}
+                  </td>
                   <td className="px-5 py-3 text-xs" style={{ color: T.inkSoft }}>{c.cavalliIds.map((id) => cavalli.find((h) => h.id === id)?.nome).filter(Boolean).join(', ') || '—'}</td>
                   <td className="px-5 py-3"><Pill tone={urgencyTone(giorni)}>{fmtDate(c.certMedico)}</Pill></td>
                   <td className="px-5 py-3"><Pill tone={c.stato === 'attivo' ? 'good' : 'bad'}>{c.stato}</Pill></td>
@@ -501,7 +526,7 @@ function Soci({ data, mutate }) {
               );
             })}
           </tbody>
-        </table>
+        </table></div>
         {filtered.length === 0 && <EmptyState icon={Users} text="Nessun socio trovato" sub="Prova a modificare la ricerca o aggiungi un nuovo socio" />}
       </Card>
 
@@ -513,6 +538,8 @@ function Soci({ data, mutate }) {
             <div className="flex justify-between"><span style={{ color: T.inkSoft }}>Email</span><span style={{ color: T.ink }}>{detail.email}</span></div>
             <div className="flex justify-between"><span style={{ color: T.inkSoft }}>Telefono</span><span style={{ color: T.ink }}>{detail.telefono}</span></div>
             <div className="flex justify-between"><span style={{ color: T.inkSoft }}>Tessera</span><Pill tone="brass">{detail.tessera}</Pill></div>
+            <div className="flex justify-between"><span style={{ color: T.inkSoft }}>Patente FISE</span><span style={{ color: T.ink }}>{detail.patenteFise && detail.patenteFise !== 'Nessuna' ? `${detail.patenteFise}${detail.tesseraFise ? ' · ' + detail.tesseraFise : ''}` : '—'}</span></div>
+            {detail.scadenzaFise && <div className="flex justify-between"><span style={{ color: T.inkSoft }}>Scad. tesseramento</span><Pill tone={urgencyTone(daysUntil(detail.scadenzaFise))}>{fmtDate(detail.scadenzaFise)}</Pill></div>}
             <div className="flex justify-between"><span style={{ color: T.inkSoft }}>Iscritto dal</span><span style={{ color: T.ink }}>{fmtDate(detail.dataIscrizione)}</span></div>
             <div className="flex justify-between"><span style={{ color: T.inkSoft }}>Cert. medico</span><Pill tone={urgencyTone(daysUntil(detail.certMedico))}>{fmtDate(detail.certMedico)}</Pill></div>
             <div><span style={{ color: T.inkSoft }}>Cavalli</span><div className="mt-1 flex flex-wrap gap-1.5">{detail.cavalliIds.map((id) => <Pill key={id}>{cavalli.find((h) => h.id === id)?.nome}</Pill>)}{detail.cavalliIds.length === 0 && <span style={{ color: T.inkSoft }}>Nessuno</span>}</div></div>
@@ -599,6 +626,44 @@ function LibrettoEntry({ icon: Icon, label, entry, extra }) {
         <div className="text-xs" style={{ color: T.inkSoft }}>{entry ? `Ultima: ${fmtDate(entry.data)}${extra ? ' · ' + extra(entry) : ''}` : 'Nessun dato registrato'}</div>
       </div>
       {entry && <Pill tone={urgencyTone(giorni)}>{urgencyLabel(giorni)}</Pill>}
+    </div>
+  );
+}
+
+function RegistraIntervento({ cavallo, onSave }) {
+  const DEFAULT_GAP = { ferratura: 42, vaccinazione: 180, vermifugo: 120, visita: 0 };
+  const [tipo, setTipo] = useState('ferratura');
+  const [f, setF] = useState({ data: todayISO(), prossima: addDays(todayISO(), 42), extra: '', extra2: '' });
+  const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+  const cambiaTipo = (t) => { setTipo(t); setF((p) => ({ ...p, prossima: addDays(p.data, DEFAULT_GAP[t] || 42) })); };
+  const labels = { ferratura: 'Maniscalco', vaccinazione: 'Tipo vaccino', vermifugo: null, visita: 'Motivo' };
+
+  const salva = () => {
+    const c = JSON.parse(JSON.stringify(cavallo));
+    if (tipo === 'ferratura') c.ferrature = [...c.ferrature, { data: f.data, prossima: f.prossima, maniscalco: f.extra }];
+    if (tipo === 'vaccinazione') c.vaccinazioni = [...c.vaccinazioni, { tipo: f.extra || 'Vaccinazione', data: f.data, prossima: f.prossima }];
+    if (tipo === 'vermifugo') c.vermifughi = [...c.vermifughi, { data: f.data, prossima: f.prossima }];
+    if (tipo === 'visita') c.visiteVet = [...c.visiteVet, { data: f.data, motivo: f.extra, veterinario: f.extra2 }];
+    onSave(c);
+    setF({ data: todayISO(), prossima: addDays(todayISO(), DEFAULT_GAP[tipo] || 42), extra: '', extra2: '' });
+  };
+
+  return (
+    <div className="mt-4 p-4 rounded-xl" style={{ background: T.paper }}>
+      <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: T.brassDark }}>Registra intervento</div>
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {['ferratura', 'vaccinazione', 'vermifugo', 'visita'].map((t) => (
+          <button key={t} type="button" onClick={() => cambiaTipo(t)} className="px-3 py-1.5 rounded-full text-xs font-medium border capitalize"
+            style={{ borderColor: tipo === t ? T.brass : T.line, background: tipo === t ? '#F1E4CB' : 'white', color: tipo === t ? T.brassDark : T.inkSoft }}>{t}</button>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Data"><input type="date" className={inputCls} style={inputStyle} value={f.data} onChange={(e) => set('data', e.target.value)} /></Field>
+        {tipo !== 'visita' && <Field label="Prossima scadenza"><input type="date" className={inputCls} style={inputStyle} value={f.prossima} onChange={(e) => set('prossima', e.target.value)} /></Field>}
+        {labels[tipo] && <Field label={labels[tipo]}><input className={inputCls} style={inputStyle} value={f.extra} onChange={(e) => set('extra', e.target.value)} /></Field>}
+        {tipo === 'visita' && <Field label="Veterinario"><input className={inputCls} style={inputStyle} value={f.extra2} onChange={(e) => set('extra2', e.target.value)} /></Field>}
+      </div>
+      <button onClick={salva} className="mt-1 px-4 py-2 rounded-lg text-sm font-semibold text-white inline-flex items-center gap-1.5" style={{ background: T.brass }}><Plus size={14} />Aggiungi al libretto</button>
     </div>
   );
 }
@@ -698,6 +763,7 @@ function Cavalli({ data, mutate }) {
             <LibrettoEntry icon={Stethoscope} label="Vermifugazione" entry={detail.vermifughi[detail.vermifughi.length - 1]} />
             <LibrettoEntry icon={Hammer} label="Ferratura" entry={detail.ferrature[detail.ferrature.length - 1]} extra={(e) => e.maniscalco} />
           </div>
+          <RegistraIntervento cavallo={detail} onSave={(c) => { mutate('cavalli', cavalli.map((h) => (h.id === c.id ? c : h))); setDetail(c); }} />
           {detail.visiteVet.length > 0 && (
             <div className="mt-4">
               <div className="font-serif text-base mb-2" style={{ color: T.ink }}>Visite veterinarie</div>
@@ -774,7 +840,7 @@ function LezioneForm({ initial, onSave, onCancel, istruttori, cavalli, clienti }
 }
 
 function Calendario({ data, mutate }) {
-  const { lezioni, istruttori, cavalli, clienti } = data;
+  const { lezioni, istruttori, cavalli, clienti, eventi } = data;
   const [weekStart, setWeekStart] = useState(() => { const d = new Date(); d.setDate(d.getDate() - d.getDay() + 1); return d.toISOString().slice(0, 10); });
   const [modal, setModal] = useState(null);
   const [del, setDel] = useState(null);
@@ -819,6 +885,13 @@ function Calendario({ data, mutate }) {
                 {isToday && <span className="w-1.5 h-1.5 rounded-full" style={{ background: T.brass }} />}
               </div>
               <div className="space-y-2 min-h-[80px]">
+                {eventi.filter((ev) => ev.data === d).map((ev) => (
+                  <Card key={ev.id} className="p-3" style={{ borderLeft: `3px solid ${T.brass}`, background: '#FBF6EA' }}>
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: T.brassDark }}><Award size={12} />{ev.tipo}</div>
+                    <div className="text-sm font-medium mt-0.5" style={{ color: T.ink }}>{ev.nome}</div>
+                    {ev.luogo && <div className="text-xs" style={{ color: T.inkSoft }}>{ev.luogo}</div>}
+                  </Card>
+                ))}
                 {dayLezioni.map((l) => (
                   <Card key={l.id} className="p-3 cursor-pointer hover:shadow-sm group" style={{ borderLeft: `3px solid ${l.stato === 'confermata' ? T.sage : l.stato === 'cancellata' ? T.rust : T.amber}` }} >
                     <div onClick={() => setModal(l)}>
@@ -850,7 +923,7 @@ function Calendario({ data, mutate }) {
 
 /* ============================= ISTRUTTORI ============================= */
 function IstruttoreForm({ initial, onSave, onCancel }) {
-  const [f, setF] = useState(initial || { nome: '', cognome: '', specializzazioni: [], telefono: '', email: '', brevetto: '', giorni: [] });
+  const [f, setF] = useState(initial ? { scadenzaBrevetto: '', ...initial } : { nome: '', cognome: '', specializzazioni: [], telefono: '', email: '', brevetto: '', scadenzaBrevetto: '', giorni: [] });
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const GIORNI = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
   return (
@@ -863,7 +936,10 @@ function IstruttoreForm({ initial, onSave, onCancel }) {
         <Field label="Telefono"><input className={inputCls} style={inputStyle} value={f.telefono} onChange={(e) => set('telefono', e.target.value)} /></Field>
         <Field label="Email"><input className={inputCls} style={inputStyle} value={f.email} onChange={(e) => set('email', e.target.value)} /></Field>
       </div>
-      <Field label="Brevetto / qualifica"><input className={inputCls} style={inputStyle} value={f.brevetto} onChange={(e) => set('brevetto', e.target.value)} /></Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Brevetto / qualifica"><input className={inputCls} style={inputStyle} value={f.brevetto} onChange={(e) => set('brevetto', e.target.value)} /></Field>
+        <Field label="Scadenza brevetto"><input type="date" className={inputCls} style={inputStyle} value={f.scadenzaBrevetto} onChange={(e) => set('scadenzaBrevetto', e.target.value)} /></Field>
+      </div>
       <Field label="Specializzazioni (separate da virgola)">
         <input className={inputCls} style={inputStyle} value={f.specializzazioni.join(', ')} onChange={(e) => set('specializzazioni', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))} />
       </Field>
@@ -914,6 +990,7 @@ function Istruttori({ data, mutate }) {
                 <div>
                   <div className="font-serif text-lg" style={{ color: T.ink }}>{i.nome} {i.cognome}</div>
                   <div className="text-xs" style={{ color: T.inkSoft }}>{i.brevetto}</div>
+                  {i.scadenzaBrevetto && <div className="mt-1"><Pill tone={urgencyTone(daysUntil(i.scadenzaBrevetto))}>{urgencyLabel(daysUntil(i.scadenzaBrevetto))}</Pill></div>}
                 </div>
               </div>
               <div className="flex gap-1">
@@ -937,13 +1014,21 @@ function Istruttori({ data, mutate }) {
   );
 }
 
-/* ============================= BOX ============================= */
-function BoxForm({ initial, onSave, onCancel, cavalli }) {
-  const [f, setF] = useState(initial);
+/* ============================= BOX & PADDOCK ============================= */
+function BoxForm({ initial, onSave, onCancel, onDelete, cavalli, nextNumero }) {
+  const [f, setF] = useState(initial ? { tipo: 'Box', ...initial } : { numero: nextNumero, tipo: 'Box', dimensione: '3x3.5 m', cavalloId: null, canone: 0, note: '' });
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   return (
     <div>
-      <Field label={`Box numero ${f.numero}`}><input className={inputCls} style={inputStyle} value={f.dimensione} onChange={(e) => set('dimensione', e.target.value)} /></Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Numero"><input type="number" className={inputCls} style={inputStyle} value={f.numero} onChange={(e) => set('numero', Number(e.target.value))} /></Field>
+        <Field label="Tipo">
+          <select className={inputCls} style={inputStyle} value={f.tipo} onChange={(e) => set('tipo', e.target.value)}>
+            <option>Box</option><option>Paddock</option>
+          </select>
+        </Field>
+      </div>
+      <Field label="Dimensione"><input className={inputCls} style={inputStyle} value={f.dimensione} onChange={(e) => set('dimensione', e.target.value)} /></Field>
       <Field label="Cavallo assegnato">
         <select className={inputCls} style={inputStyle} value={f.cavalloId || ''} onChange={(e) => set('cavalloId', e.target.value || null)}>
           <option value="">Libero</option>
@@ -952,9 +1037,16 @@ function BoxForm({ initial, onSave, onCancel, cavalli }) {
       </Field>
       <Field label="Canone mensile (€)"><input type="number" className={inputCls} style={inputStyle} value={f.canone} onChange={(e) => set('canone', Number(e.target.value))} /></Field>
       <Field label="Note"><textarea className={inputCls} style={inputStyle} rows={2} value={f.note} onChange={(e) => set('note', e.target.value)} /></Field>
-      <div className="flex justify-end gap-2 mt-4">
-        <button onClick={onCancel} className="px-4 py-2 rounded-lg text-sm font-medium border" style={{ borderColor: T.line }}>Annulla</button>
-        <button onClick={() => onSave(f)} className="px-4 py-2 rounded-lg text-sm font-semibold text-white inline-flex items-center gap-1.5" style={{ background: T.brass }}><Save size={14} />Salva box</button>
+      <div className="flex items-center justify-between mt-4">
+        <div>
+          {onDelete && !f.cavalloId && (
+            <button onClick={onDelete} className="px-3 py-2 rounded-lg text-sm font-medium inline-flex items-center gap-1.5" style={{ color: T.rust }}><Trash2 size={14} />Elimina</button>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onCancel} className="px-4 py-2 rounded-lg text-sm font-medium border" style={{ borderColor: T.line }}>Annulla</button>
+          <button onClick={() => onSave(f)} className="px-4 py-2 rounded-lg text-sm font-semibold text-white inline-flex items-center gap-1.5" style={{ background: T.brass }}><Save size={14} />Salva</button>
+        </div>
       </div>
     </div>
   );
@@ -965,26 +1057,35 @@ function BoxModule({ data, mutate }) {
   const [modal, setModal] = useState(null);
   const occupati = box.filter((b) => b.cavalloId).length;
   const canoni = box.reduce((s, b) => s + (b.cavalloId ? b.canone : 0), 0);
+  const paddocks = box.filter((b) => (b.tipo || 'Box') === 'Paddock').length;
+  const nextNumero = box.length ? Math.max(...box.map((b) => b.numero)) + 1 : 1;
+  const sorted = [...box].sort((a, b) => a.numero - b.numero);
 
-  const save = (f) => { mutate('box', box.map((b) => (b.id === f.id ? f : b))); setModal(null); };
+  const save = (f) => {
+    if (f.id) mutate('box', box.map((b) => (b.id === f.id ? f : b)));
+    else mutate('box', [...box, { ...f, id: uid('b') }]);
+    setModal(null);
+  };
+  const remove = (id) => { mutate('box', box.filter((b) => b.id !== id)); setModal(null); };
 
   return (
     <div>
-      <SectionHeader eyebrow={`${occupati}/${box.length} box occupati`} title="Box & Pensioni" />
+      <SectionHeader eyebrow={`${occupati}/${box.length} posti occupati`} title="Box & Paddock" action={<PrimaryButton icon={Plus} onClick={() => setModal({ mode: 'new' })}>Nuovo box / paddock</PrimaryButton>} />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card className="p-5"><div className="text-xs font-semibold uppercase" style={{ color: T.inkSoft }}>Box totali</div><div className="text-3xl font-serif mt-1" style={{ color: T.ink }}>{box.length}</div></Card>
+        <Card className="p-5"><div className="text-xs font-semibold uppercase" style={{ color: T.inkSoft }}>Posti totali</div><div className="text-3xl font-serif mt-1" style={{ color: T.ink }}>{box.length}</div></Card>
         <Card className="p-5"><div className="text-xs font-semibold uppercase" style={{ color: T.inkSoft }}>Occupati</div><div className="text-3xl font-serif mt-1" style={{ color: T.sage }}>{occupati}</div></Card>
-        <Card className="p-5"><div className="text-xs font-semibold uppercase" style={{ color: T.inkSoft }}>Liberi</div><div className="text-3xl font-serif mt-1" style={{ color: T.brassDark }}>{box.length - occupati}</div></Card>
+        <Card className="p-5"><div className="text-xs font-semibold uppercase" style={{ color: T.inkSoft }}>Paddock</div><div className="text-3xl font-serif mt-1" style={{ color: T.brassDark }}>{paddocks}</div></Card>
         <Card className="p-5"><div className="text-xs font-semibold uppercase" style={{ color: T.inkSoft }}>Canoni / mese</div><div className="text-2xl font-mono mt-1" style={{ color: T.ink }}>{euro(canoni)}</div></Card>
       </div>
 
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-        {box.map((b) => {
+        {sorted.map((b) => {
           const cavallo = cavalli.find((h) => h.id === b.cavalloId);
+          const isPad = (b.tipo || 'Box') === 'Paddock';
           return (
-            <Card key={b.id} className="p-4 cursor-pointer hover:shadow-md transition-shadow text-center" onClick={() => setModal(b)}
-              style={{ background: cavallo ? '#F9F6EF' : T.card }}>
-              <div className="text-xs font-mono font-semibold mb-2" style={{ color: T.brassDark }}>BOX {b.numero}</div>
+            <Card key={b.id} className="p-4 cursor-pointer hover:shadow-md transition-shadow text-center" onClick={() => setModal({ mode: 'edit', item: b })}
+              style={{ background: cavallo ? '#F9F6EF' : T.card, borderStyle: isPad ? 'dashed' : 'solid' }}>
+              <div className="text-xs font-mono font-semibold mb-2" style={{ color: isPad ? T.sage : T.brassDark }}>{isPad ? 'PADDOCK' : 'BOX'} {b.numero}</div>
               {cavallo ? (
                 <>
                   <CoatBadge nome={cavallo.nome} mantello={cavallo.mantello} size={40} />
@@ -1001,7 +1102,8 @@ function BoxModule({ data, mutate }) {
         })}
       </div>
 
-      {modal && <Modal title={`Box ${modal.numero}`} onClose={() => setModal(null)}><BoxForm initial={modal} cavalli={cavalli} onSave={save} onCancel={() => setModal(null)} /></Modal>}
+      {modal?.mode === 'edit' && <Modal title={`${modal.item.tipo || 'Box'} ${modal.item.numero}`} onClose={() => setModal(null)}><BoxForm initial={modal.item} cavalli={cavalli} onSave={save} onCancel={() => setModal(null)} onDelete={() => remove(modal.item.id)} /></Modal>}
+      {modal?.mode === 'new' && <Modal title="Nuovo box / paddock" onClose={() => setModal(null)}><BoxForm cavalli={cavalli} nextNumero={nextNumero} onSave={save} onCancel={() => setModal(null)} /></Modal>}
     </div>
   );
 }
@@ -1083,7 +1185,7 @@ function Fatturazione({ data, mutate }) {
       </div>
 
       <Card className="overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr style={{ background: T.paper }}>
               {['N.', 'Socio', 'Voce', 'Emissione', 'Scadenza', 'Importo', 'Stato', ''].map((h) => <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase" style={{ color: T.inkSoft }}>{h}</th>)}
@@ -1103,7 +1205,7 @@ function Fatturazione({ data, mutate }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
         {filtered.length === 0 && <EmptyState icon={Wallet} text="Nessuna fattura in questa categoria" />}
       </Card>
 
@@ -1123,7 +1225,7 @@ function EventoForm({ initial, onSave, onCancel }) {
       <div className="grid grid-cols-3 gap-3">
         <Field label="Tipo">
           <select className={inputCls} style={inputStyle} value={f.tipo} onChange={(e) => set('tipo', e.target.value)}>
-            <option>Gara</option><option>Clinic</option><option>Evento sociale</option>
+            <option>Gara</option><option>Clinic</option><option>Evento sociale</option><option>Altro</option>
           </select>
         </Field>
         <Field label="Data"><input type="date" className={inputCls} style={inputStyle} value={f.data} onChange={(e) => set('data', e.target.value)} /></Field>
@@ -1242,7 +1344,7 @@ function Magazzino({ data, mutate }) {
     <div>
       <SectionHeader eyebrow={basse > 0 ? `${basse} articoli sotto soglia` : 'Scorte in ordine'} title="Magazzino" action={<PrimaryButton icon={Plus} onClick={() => setModal({})}>Nuovo articolo</PrimaryButton>} />
       <Card className="overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr style={{ background: T.paper }}>
               {['Articolo', 'Categoria', 'Quantità', 'Soglia minima', 'Fornitore', 'Ultimo rifornimento', ''].map((h) => <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase" style={{ color: T.inkSoft }}>{h}</th>)}
@@ -1270,7 +1372,7 @@ function Magazzino({ data, mutate }) {
               );
             })}
           </tbody>
-        </table>
+        </table></div>
       </Card>
       {modal && <Modal title={modal.id ? 'Modifica articolo' : 'Nuovo articolo'} onClose={() => setModal(null)}><MagazzinoForm initial={modal.id ? modal : null} onSave={save} onCancel={() => setModal(null)} /></Modal>}
       {del && <ConfirmDelete label={del.nome} onConfirm={() => remove(del.id)} onCancel={() => setDel(null)} />}
@@ -1321,7 +1423,7 @@ function Documenti({ data, mutate }) {
     <div>
       <SectionHeader eyebrow={`${documenti.length} documenti archiviati`} title="Documenti" action={<PrimaryButton icon={Plus} onClick={() => setModal({})}>Nuovo documento</PrimaryButton>} />
       <Card className="overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr style={{ background: T.paper }}>
               {['Documento', 'Tipo', 'Associato a', 'Scadenza', ''].map((h) => <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase" style={{ color: T.inkSoft }}>{h}</th>)}
@@ -1341,7 +1443,7 @@ function Documenti({ data, mutate }) {
               );
             })}
           </tbody>
-        </table>
+        </table></div>
       </Card>
       {modal && <Modal title={modal.id ? 'Modifica documento' : 'Nuovo documento'} onClose={() => setModal(null)}><DocumentoForm initial={modal.id ? modal : null} onSave={save} onCancel={() => setModal(null)} /></Modal>}
       {del && <ConfirmDelete label={del.nome} onConfirm={() => remove(del.id)} onCancel={() => setDel(null)} />}
@@ -1389,6 +1491,40 @@ function Impostazioni({ data, mutate, role, orgId }) {
 
       {isOwner && (
         <Card className="p-6 max-w-xl mt-5">
+          <h3 className="font-serif text-lg mb-1" style={{ color: T.ink }}>Backup dei dati</h3>
+          <p className="text-xs mb-4" style={{ color: T.inkSoft }}>Scarica una copia completa di tutti i dati, o ripristina da un backup precedente.</p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <button onClick={() => {
+              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+              const a = document.createElement('a');
+              a.href = URL.createObjectURL(blob);
+              a.download = `equistable-backup-${todayISO()}.json`;
+              a.click();
+              URL.revokeObjectURL(a.href);
+            }} className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: T.forest }}>Esporta backup</button>
+            <label className="px-4 py-2 rounded-lg text-sm font-semibold border cursor-pointer" style={{ borderColor: T.line, color: T.ink }}>
+              Importa backup
+              <input type="file" accept=".json" className="hidden" onChange={(e) => {
+                const file = e.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                  try {
+                    const obj = JSON.parse(reader.result);
+                    ['clienti','cavalli','istruttori','box','lezioni','fatture','eventi','magazzino','documenti'].forEach((k) => { if (Array.isArray(obj[k])) mutate(k, obj[k]); });
+                    if (obj.impostazioni) mutate('impostazioni', obj.impostazioni);
+                    alert('Backup importato con successo.');
+                  } catch { alert('File di backup non valido.'); }
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+              }} />
+            </label>
+          </div>
+        </Card>
+      )}
+
+      {isOwner && (
+        <Card className="p-6 max-w-xl mt-5">
           <h3 className="font-serif text-lg mb-1" style={{ color: T.ink }}>Invita un collaboratore</h3>
           <p className="text-xs mb-4" style={{ color: T.inkSoft }}>Genera un codice e passalo al dipendente: lo inserira dopo la registrazione. Avra accesso a tutto tranne la fatturazione.</p>
           <div className="flex items-center gap-3">
@@ -1409,9 +1545,11 @@ function Impostazioni({ data, mutate, role, orgId }) {
 /* ============================= APP ROOT ============================= */
 export default function App({ data, mutate, role, orgId, onLogout }) {
   const [active, setActive] = useState('dashboard');
+  const [navOpen, setNavOpen] = useState(false);
   const { clienti, cavalli, fatture, magazzino, impostazioni } = data;
 
-  const alerts = useMemo(() => {
+  // Contatori grezzi delle situazioni da attenzionare
+  const rawAlerts = useMemo(() => {
     const certScaduti = clienti.filter((c) => daysUntil(c.certMedico) !== null && daysUntil(c.certMedico) <= 14).length;
     const sanitarie = cavalli.reduce((s, h) => {
       const v = h.vaccinazioni[h.vaccinazioni.length - 1];
@@ -1423,11 +1561,30 @@ export default function App({ data, mutate, role, orgId, onLogout }) {
     }, 0);
     const fattScadute = role === 'owner' ? fatture.filter((f) => f.stato !== 'pagata').length : 0;
     const magBasso = magazzino.filter((m) => m.quantita <= m.soglia).length;
-    return { soci: certScaduti || undefined, cavalli: sanitarie || undefined, fatturazione: fattScadute || undefined, magazzino: magBasso || undefined };
+    return { soci: certScaduti, cavalli: sanitarie, fatturazione: fattScadute, magazzino: magBasso };
   }, [clienti, cavalli, fatture, magazzino, role]);
 
+  // Badge "visti": entrando in una sezione il badge sparisce, e riappare solo se il conteggio sale
+  const [seen, setSeen] = useState(() => { try { return JSON.parse(window.localStorage.getItem('eq_alert_seen') || '{}'); } catch { return {}; } });
+  const openSection = useCallback((key) => {
+    setActive(key);
+    setNavOpen(false);
+    setSeen((prev) => {
+      if (rawAlerts[key] === undefined) return prev;
+      const next = { ...prev, [key]: rawAlerts[key] };
+      try { window.localStorage.setItem('eq_alert_seen', JSON.stringify(next)); } catch { /* noop */ }
+      return next;
+    });
+  }, [rawAlerts]);
+
+  const alerts = useMemo(() => {
+    const out = {};
+    Object.entries(rawAlerts).forEach(([k, v]) => { if (v > (seen[k] || 0)) out[k] = v; });
+    return out;
+  }, [rawAlerts, seen]);
+
   const screens = {
-    dashboard: <Dashboard data={data} setActive={setActive} role={role} />,
+    dashboard: <Dashboard data={data} setActive={openSection} role={role} />,
     soci: <Soci data={data} mutate={mutate} />,
     cavalli: <Cavalli data={data} mutate={mutate} />,
     calendario: <Calendario data={data} mutate={mutate} />,
@@ -1442,10 +1599,25 @@ export default function App({ data, mutate, role, orgId, onLogout }) {
 
   return (
     <div className="min-h-screen flex font-sans" style={{ background: T.paper }}>
-      <Sidebar active={active} setActive={setActive} impostazioni={impostazioni} alerts={alerts} role={role} onLogout={onLogout} />
-      <main className="flex-1 p-8 max-w-[1400px]">
-        {screens[active]}
-      </main>
+      <style>{`
+        @keyframes eqFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        @keyframes eqPop { from { opacity: 0; transform: scale(0.96) translateY(10px); } to { opacity: 1; transform: none; } }
+        @keyframes eqOverlay { from { opacity: 0; } to { opacity: 1; } }
+        .eq-page { animation: eqFade 0.25s ease; }
+        .eq-modal-panel { animation: eqPop 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        .eq-overlay { animation: eqOverlay 0.15s ease; }
+        @media (prefers-reduced-motion: reduce) { .eq-page, .eq-modal-panel, .eq-overlay { animation: none; } }
+      `}</style>
+      <Sidebar active={active} setActive={openSection} impostazioni={impostazioni} alerts={alerts} role={role} onLogout={onLogout} open={navOpen} onClose={() => setNavOpen(false)} />
+      <div className="flex-1 min-w-0">
+        <div className="md:hidden sticky top-0 z-20 flex items-center gap-3 px-4 py-3" style={{ background: T.forest }}>
+          <button onClick={() => setNavOpen(true)} className="p-1.5 rounded-lg" aria-label="Apri menu"><Menu size={20} color={T.brassLight} /></button>
+          <span className="font-serif text-white truncate">{impostazioni?.nome || 'Scuderia'}</span>
+        </div>
+        <main key={active} className="p-4 md:p-8 max-w-[1400px] eq-page">
+          {screens[active]}
+        </main>
+      </div>
     </div>
   );
 }
