@@ -5,7 +5,7 @@ const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(url, anon);
 
-export const COLLECTIONS = ['clienti', 'cavalli', 'istruttori', 'box', 'lezioni', 'fatture', 'eventi', 'magazzino', 'documenti'];
+export const COLLECTIONS = ['clienti', 'cavalli', 'istruttori', 'box', 'lezioni', 'fatture', 'eventi', 'magazzino', 'documenti', 'mangimi', 'diete'];
 
 /** Carica tutte le righe di una collezione per l'org corrente e restituisce l'array dei payload. */
 export async function loadCollection(table, orgId) {
@@ -13,6 +13,8 @@ export async function loadCollection(table, orgId) {
   if (error) {
     // fatture: lo staff riceve un array vuoto (RLS), non un errore bloccante
     if (table === 'fatture') return [];
+    // tabella non ancora creata (migrazione non eseguita): non bloccare l'app
+    if (error.code === '42P01') { console.warn(`Tabella ${table} mancante: esegui la migrazione SQL.`); return []; }
     throw error;
   }
   return (data || []).map((r) => ({ ...r.data, id: r.id }));

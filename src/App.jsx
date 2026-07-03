@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, CalendarDays, Home, GraduationCap, Wallet, Award,
   Package, FileText, Settings, Plus, Search, X, Edit2, Trash2, ChevronRight,
   ChevronLeft, AlertTriangle, CheckCircle2, Clock, Phone, Mail, TrendingUp,
-  Syringe, Hammer, Stethoscope, MapPin, Filter, Save, ArrowUpRight, ArrowDownRight, Menu
+  Syringe, Hammer, Stethoscope, MapPin, Filter, Save, ArrowUpRight, ArrowDownRight, Menu, Leaf
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, LineChart, Line, ReferenceLine, Cell } from 'recharts';
 
@@ -44,6 +44,18 @@ const fmtDate = (d) => { if (!d) return '—'; const dt = new Date(d); return dt
 const daysUntil = (d) => { if (!d) return null; const diff = (new Date(d) - new Date()) / 86400000; return Math.ceil(diff); };
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const addDays = (d, n) => { const dt = new Date(d); dt.setDate(dt.getDate() + n); return dt.toISOString().slice(0, 10); };
+
+function EquistableLogo({ size = 24, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
+      <path d="M13 42 V25 C13 14.5 17.9 7 24 7 c6.1 0 11 7.5 11 18 V42" stroke={color} strokeWidth="3" strokeLinecap="round" />
+      {[[13, 30], [13, 36], [35, 30], [35, 36], [16.1, 15.5], [31.9, 15.5]].map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r="1.15" fill={color} />
+      ))}
+      <path d="M20.2 42 c0-5.2 -1.8-7.4 -1.8-11 c0-4.6 2.3-7.1 4.6-7.7 l1.4-3 1.7 3.1 c2.6 0.9 4.1 3 4.1 4.9 l-2.3 0.8 c-0.8 0.3 -1.3 1 -1.3 1.8 c0 2.9 1.6 5 1.6 11.1 Z" fill={color} />
+    </svg>
+  );
+}
 
 function HorseshoeMark({ size = 24, color = 'currentColor' }) {
   return (
@@ -212,6 +224,7 @@ const NAV = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'soci', label: 'Soci & Clienti', icon: Users },
   { key: 'cavalli', label: 'Cavalli', icon: HorseshoeMark },
+  { key: 'alimentazione', label: 'Alimentazione', icon: Leaf },
   { key: 'calendario', label: 'Calendario & Lezioni', icon: CalendarDays },
   { key: 'istruttori', label: 'Istruttori', icon: GraduationCap },
   { key: 'box', label: 'Box & Paddock', icon: Home },
@@ -229,8 +242,11 @@ function Sidebar({ active, setActive, impostazioni, alerts, role, onLogout, open
       <div className={`w-64 shrink-0 h-screen flex flex-col fixed md:sticky top-0 z-40 transition-transform duration-200 md:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`} style={{ background: T.forest }}>
       <div className="px-5 pt-6 pb-5 flex items-center gap-3 border-b" style={{ borderColor: T.forestLine }}>
         <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: T.brass }}>
-          <HorseshoeMark size={20} color="#16241C" />
+          <EquistableLogo size={26} color="#16241C" />
         </div>
+        {impostazioni?.logo && (
+          <img src={impostazioni.logo} alt="Logo attività" className="w-10 h-10 rounded-xl shrink-0 object-contain" style={{ background: '#FFFFFF' }} />
+        )}
         <div className="min-w-0">
           <div className="font-serif text-white text-lg leading-tight truncate">{impostazioni?.nome || 'Scuderia'}</div>
           <div className="text-[11px] uppercase tracking-wider" style={{ color: T.brassLight }}>Gestionale equestre</div>
@@ -807,6 +823,16 @@ function Cavalli({ data, mutate }) {
             <div className="p-3 rounded-xl" style={{ background: T.paper }}><div className="text-xs" style={{ color: T.inkSoft }}>Box</div><div style={{ color: T.ink }}>{boxNum(detail.boxId) ? `N. ${boxNum(detail.boxId)}` : '—'}</div></div>
             <div className="p-3 rounded-xl" style={{ background: T.paper }}><div className="text-xs" style={{ color: T.inkSoft }}>Mantello</div><div style={{ color: T.ink }}>{detail.mantello}</div></div>
           </div>
+          {detail.visiteVet.length > 0 && (
+            <div className="mb-5 p-4 rounded-xl" style={{ background: T.amberBg }}>
+              <div className="font-serif text-base mb-2 flex items-center gap-2" style={{ color: T.ink }}><Stethoscope size={16} style={{ color: T.brassDark }} />Visite veterinarie</div>
+              {[...detail.visiteVet].sort((a, b) => (b.data || '').localeCompare(a.data || '')).map((v, i) => (
+                <div key={i} className="text-sm py-1" style={{ color: T.ink }}>
+                  {fmtDate(v.data)} — {v.motivo}{v.veterinario ? <span style={{ color: T.inkSoft }}> ({v.veterinario})</span> : null}
+                </div>
+              ))}
+            </div>
+          )}
           <div className="font-serif text-base mb-1" style={{ color: T.ink }}>Libretto sanitario</div>
           <div className="divide-y" style={{ borderColor: T.line }}>
             <LibrettoEntry icon={Syringe} label={`Vaccinazione — ${detail.vaccinazioni[0]?.tipo || ''}`} entry={detail.vaccinazioni[detail.vaccinazioni.length - 1]} />
@@ -814,16 +840,7 @@ function Cavalli({ data, mutate }) {
             <LibrettoEntry icon={Hammer} label="Ferratura" entry={detail.ferrature[detail.ferrature.length - 1]} extra={(e) => e.maniscalco} />
           </div>
           <RegistraIntervento cavallo={detail} onSave={(c) => { mutate('cavalli', cavalli.map((h) => (h.id === c.id ? c : h))); setDetail(c); }} />
-          {detail.visiteVet.length > 0 && (
-            <div className="mt-4">
-              <div className="font-serif text-base mb-2" style={{ color: T.ink }}>Visite veterinarie</div>
-              {detail.visiteVet.map((v, i) => (
-                <div key={i} className="text-sm py-1.5 border-t" style={{ borderColor: T.line }}>
-                  <span style={{ color: T.ink }}>{fmtDate(v.data)} — {v.motivo}</span> <span style={{ color: T.inkSoft }}>({v.veterinario})</span>
-                </div>
-              ))}
-            </div>
-          )}
+
         </Modal>
       )}
     </div>
@@ -1489,6 +1506,204 @@ function Documenti({ data, mutate }) {
   );
 }
 
+/* ============================= ALIMENTAZIONE & DIETE ============================= */
+function MangimeForm({ initial, onSave, onCancel }) {
+  const [f, setF] = useState(initial || { nome: '', tipo: 'Mangime', unita: 'kg', note: '' });
+  const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+  return (
+    <div>
+      <Field label="Nome prodotto"><input className={inputCls} style={inputStyle} value={f.nome} onChange={(e) => set('nome', e.target.value)} /></Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Tipo"><SelectAltro value={f.tipo} onChange={(v) => set('tipo', v)} options={['Mangime', 'Integratore', 'Medicinale']} /></Field>
+        <Field label="Unità di misura"><SelectAltro value={f.unita} onChange={(v) => set('unita', v)} options={['kg', 'g', 'l', 'ml', 'misurino', 'pastiglia']} /></Field>
+      </div>
+      <Field label="Note (dosaggi consigliati, avvertenze…)"><textarea className={inputCls} style={inputStyle} rows={2} value={f.note} onChange={(e) => set('note', e.target.value)} /></Field>
+      <div className="flex justify-end gap-2 mt-4">
+        <button onClick={onCancel} className="px-4 py-2 rounded-lg text-sm font-medium border" style={{ borderColor: T.line }}>Annulla</button>
+        <button onClick={() => onSave(f)} className="px-4 py-2 rounded-lg text-sm font-semibold text-white inline-flex items-center gap-1.5" style={{ background: T.brass }}><Save size={14} />Salva prodotto</button>
+      </div>
+    </div>
+  );
+}
+
+function DietaForm({ initial, onSave, onCancel, mangimi, cavalli, box }) {
+  const [f, setF] = useState(initial || { nome: '', cavalloId: '', boxId: '', righe: [], note: '' });
+  const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+  const setCavallo = (id) => setF((p) => {
+    const h = cavalli.find((x) => x.id === id);
+    return { ...p, cavalloId: id, boxId: p.boxId || (h && h.boxId) || '' };
+  });
+  const setRiga = (i, k, v) => set('righe', f.righe.map((r, idx) => (idx === i ? { ...r, [k]: v } : r)));
+  const rmRiga = (i) => set('righe', f.righe.filter((_, idx) => idx !== i));
+  const addRiga = () => set('righe', [...f.righe, { mangimeId: mangimi[0] ? mangimi[0].id : '', quantita: 1, frequenza: 'Mattina e sera' }]);
+
+  return (
+    <div>
+      <Field label="Nome dieta"><input className={inputCls} style={inputStyle} placeholder="Es. Dieta estiva lavoro leggero" value={f.nome} onChange={(e) => set('nome', e.target.value)} /></Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Cavallo">
+          <select className={inputCls} style={inputStyle} value={f.cavalloId} onChange={(e) => setCavallo(e.target.value)}>
+            <option value="">Nessuno</option>
+            {cavalli.map((h) => <option key={h.id} value={h.id}>{h.nome}</option>)}
+          </select>
+        </Field>
+        <Field label="Box / Paddock">
+          <select className={inputCls} style={inputStyle} value={f.boxId} onChange={(e) => set('boxId', e.target.value)}>
+            <option value="">Nessuno</option>
+            {box.map((b) => <option key={b.id} value={b.id}>{b.tipo || 'Box'} {b.numero}</option>)}
+          </select>
+        </Field>
+      </div>
+
+      <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: T.inkSoft }}>Composizione</div>
+      {mangimi.length === 0 ? (
+        <div className="p-3 rounded-xl text-sm mb-3" style={{ background: T.amberBg, color: T.brassDark }}>
+          Nessun prodotto in catalogo: crea prima mangimi, integratori o medicinali nella scheda "Catalogo prodotti".
+        </div>
+      ) : (
+        <>
+          {f.righe.map((r, i) => (
+            <div key={i} className="flex items-end gap-2 mb-2">
+              <div className="flex-1">
+                <select className={inputCls} style={inputStyle} value={r.mangimeId} onChange={(e) => setRiga(i, 'mangimeId', e.target.value)}>
+                  {mangimi.map((m) => <option key={m.id} value={m.id}>{m.nome} ({m.tipo})</option>)}
+                </select>
+              </div>
+              <div className="w-20">
+                <input type="number" step="0.1" min="0" className={inputCls} style={inputStyle} value={r.quantita} onChange={(e) => setRiga(i, 'quantita', Number(e.target.value))} />
+              </div>
+              <div className="w-16 text-xs pb-3" style={{ color: T.inkSoft }}>{mangimi.find((m) => m.id === r.mangimeId)?.unita || ''}</div>
+              <div className="w-40">
+                <SelectAltro value={r.frequenza} onChange={(v) => setRiga(i, 'frequenza', v)} options={['Mattina', 'Sera', 'Mattina e sera', 'Giornaliera', 'Settimanale']} />
+              </div>
+              <button onClick={() => rmRiga(i)} className="p-2.5 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-red-700 mb-0.5" title="Rimuovi"><Trash2 size={14} /></button>
+            </div>
+          ))}
+          <button onClick={addRiga} className="text-sm font-semibold inline-flex items-center gap-1.5 mt-1 mb-2" style={{ color: T.brassDark }}><Plus size={14} />Aggiungi prodotto alla dieta</button>
+        </>
+      )}
+
+      <Field label="Note"><textarea className={inputCls} style={inputStyle} rows={2} value={f.note} onChange={(e) => set('note', e.target.value)} /></Field>
+      <div className="flex justify-end gap-2 mt-4">
+        <button onClick={onCancel} className="px-4 py-2 rounded-lg text-sm font-medium border" style={{ borderColor: T.line }}>Annulla</button>
+        <button onClick={() => onSave(f)} className="px-4 py-2 rounded-lg text-sm font-semibold text-white inline-flex items-center gap-1.5" style={{ background: T.brass }}><Save size={14} />Salva dieta</button>
+      </div>
+    </div>
+  );
+}
+
+function Alimentazione({ data, mutate }) {
+  const mangimi = data.mangimi || [];
+  const diete = data.diete || [];
+  const { cavalli, box } = data;
+  const [tab, setTab] = useState('diete');
+  const [modal, setModal] = useState(null); // { kind: 'mangime'|'dieta', item? }
+  const [del, setDel] = useState(null);
+
+  const saveMangime = (f) => {
+    if (f.id) mutate('mangimi', mangimi.map((m) => (m.id === f.id ? f : m)));
+    else mutate('mangimi', [...mangimi, { ...f, id: uid('mg') }]);
+    setModal(null);
+  };
+  const saveDieta = (f) => {
+    if (f.id) mutate('diete', diete.map((d) => (d.id === f.id ? f : d)));
+    else mutate('diete', [...diete, { ...f, id: uid('dt') }]);
+    setModal(null);
+  };
+  const removeItem = () => {
+    if (del.kind === 'mangime') mutate('mangimi', mangimi.filter((m) => m.id !== del.item.id));
+    else mutate('diete', diete.filter((d) => d.id !== del.item.id));
+    setDel(null);
+  };
+
+  const nomeCavallo = (id) => cavalli.find((h) => h.id === id);
+  const nomeBox = (id) => box.find((b) => b.id === id);
+  const tipoTone = (t) => (t === 'Medicinale' ? 'bad' : t === 'Integratore' ? 'warn' : 'good');
+
+  return (
+    <div>
+      <SectionHeader eyebrow={`${diete.length} diete · ${mangimi.length} prodotti`} title="Alimentazione & Diete"
+        action={<PrimaryButton icon={Plus} onClick={() => setModal({ kind: tab === 'diete' ? 'dieta' : 'mangime' })}>{tab === 'diete' ? 'Nuova dieta' : 'Nuovo prodotto'}</PrimaryButton>} />
+
+      <div className="flex gap-1.5 mb-5">
+        {[['diete', 'Diete'], ['catalogo', 'Catalogo prodotti']].map(([k, label]) => (
+          <button key={k} onClick={() => setTab(k)} className="px-4 py-2 rounded-lg text-sm font-medium border"
+            style={{ borderColor: tab === k ? T.brass : T.line, background: tab === k ? '#F1E4CB' : 'white', color: tab === k ? T.brassDark : T.inkSoft }}>{label}</button>
+        ))}
+      </div>
+
+      {tab === 'catalogo' && (
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto"><table className="w-full text-sm min-w-[640px]">
+            <thead>
+              <tr style={{ background: T.paper }}>
+                {['Prodotto', 'Tipo', 'Unità', 'Note', ''].map((h) => <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase" style={{ color: T.inkSoft }}>{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {mangimi.map((m) => (
+                <tr key={m.id} className="border-t hover:bg-stone-50" style={{ borderColor: T.line }}>
+                  <td className="px-5 py-3 font-medium" style={{ color: T.ink }}>{m.nome}</td>
+                  <td className="px-5 py-3"><Pill tone={tipoTone(m.tipo)}>{m.tipo}</Pill></td>
+                  <td className="px-5 py-3 text-xs font-mono" style={{ color: T.inkSoft }}>{m.unita}</td>
+                  <td className="px-5 py-3 text-xs max-w-xs truncate" style={{ color: T.inkSoft }}>{m.note || '—'}</td>
+                  <td className="px-5 py-3"><div className="flex gap-1 justify-end"><IconBtn title="Modifica" onClick={() => setModal({ kind: 'mangime', item: m })}><Edit2 size={14} /></IconBtn><IconBtn title="Elimina" onClick={() => setDel({ kind: 'mangime', item: m })}><Trash2 size={14} /></IconBtn></div></td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+          {mangimi.length === 0 && <EmptyState icon={Leaf} text="Catalogo vuoto" sub="Aggiungi mangimi, integratori e medicinali: saranno selezionabili nelle diete" />}
+        </Card>
+      )}
+
+      {tab === 'diete' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {diete.map((d) => {
+            const cavallo = nomeCavallo(d.cavalloId);
+            const b = nomeBox(d.boxId);
+            return (
+              <Card key={d.id} className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {cavallo ? <CoatBadge nome={cavallo.nome} mantello={cavallo.mantello} size={40} /> : <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: T.paper }}><Leaf size={16} style={{ color: T.brassDark }} /></div>}
+                    <div className="min-w-0">
+                      <div className="font-serif text-lg truncate" style={{ color: T.ink }}>{d.nome}</div>
+                      <div className="flex gap-1.5 flex-wrap mt-1">
+                        {cavallo && <Pill tone="brass">{cavallo.nome}</Pill>}
+                        {b && <Pill>{(b.tipo || 'Box')} {b.numero}</Pill>}
+                        {!cavallo && !b && <Pill>Non assegnata</Pill>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-1 shrink-0"><IconBtn title="Modifica" onClick={() => setModal({ kind: 'dieta', item: d })}><Edit2 size={14} /></IconBtn><IconBtn title="Elimina" onClick={() => setDel({ kind: 'dieta', item: d })}><Trash2 size={14} /></IconBtn></div>
+                </div>
+                <div className="mt-4 pt-4 border-t space-y-1.5" style={{ borderColor: T.line }}>
+                  {d.righe.length === 0 && <div className="text-xs" style={{ color: T.inkSoft }}>Nessun prodotto nella dieta.</div>}
+                  {d.righe.map((r, i) => {
+                    const m = mangimi.find((x) => x.id === r.mangimeId);
+                    return (
+                      <div key={i} className="flex items-center justify-between text-sm">
+                        <span style={{ color: T.ink }}>{m ? m.nome : '(prodotto rimosso)'}</span>
+                        <span className="text-xs font-mono" style={{ color: T.inkSoft }}>{r.quantita} {m ? m.unita : ''} · {r.frequenza}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {d.note && <div className="mt-3 text-xs" style={{ color: T.inkSoft }}>{d.note}</div>}
+              </Card>
+            );
+          })}
+          {diete.length === 0 && <div className="md:col-span-2"><EmptyState icon={Leaf} text="Nessuna dieta creata" sub="Crea il catalogo prodotti, poi componi le diete e associale a cavalli e box" /></div>}
+        </div>
+      )}
+
+      {modal?.kind === 'mangime' && <Modal title={modal.item ? 'Modifica prodotto' : 'Nuovo prodotto'} onClose={() => setModal(null)}><MangimeForm initial={modal.item} onSave={saveMangime} onCancel={() => setModal(null)} /></Modal>}
+      {modal?.kind === 'dieta' && <Modal title={modal.item ? 'Modifica dieta' : 'Nuova dieta'} onClose={() => setModal(null)} wide><DietaForm initial={modal.item} mangimi={mangimi} cavalli={cavalli} box={box} onSave={saveDieta} onCancel={() => setModal(null)} /></Modal>}
+      {del && <ConfirmDelete label={del.item.nome} onConfirm={removeItem} onCancel={() => setDel(null)} />}
+    </div>
+  );
+}
+
 /* ============================= IMPOSTAZIONI ============================= */
 function Impostazioni({ data, mutate, role, orgId }) {
   const [f, setF] = useState(data.impostazioni);
@@ -1519,6 +1734,42 @@ function Impostazioni({ data, mutate, role, orgId }) {
         </div>
         <Field label="Email"><input disabled={!isOwner} className={inputCls} style={inputStyle} value={f.email} onChange={(e) => set('email', e.target.value)} /></Field>
         {isOwner && (
+          <Field label="Logo attività (mostrato accanto al logo Equistable)">
+            <div className="flex items-center gap-3 flex-wrap">
+              {f.logo ? (
+                <img src={f.logo} alt="Logo attività" className="w-14 h-14 rounded-xl object-contain border" style={{ borderColor: T.line, background: '#fff' }} />
+              ) : (
+                <div className="w-14 h-14 rounded-xl border-2 border-dashed flex items-center justify-center text-[10px]" style={{ borderColor: T.line, color: T.inkSoft }}>Nessuno</div>
+              )}
+              <label className="px-4 py-2 rounded-lg text-sm font-semibold border cursor-pointer" style={{ borderColor: T.line, color: T.ink }}>
+                Carica logo
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                  const file = e.target.files[0]; if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const img = new Image();
+                    img.onload = () => {
+                      const s = 128;
+                      const c = document.createElement('canvas');
+                      c.width = s; c.height = s;
+                      const ctx = c.getContext('2d');
+                      const r = Math.min(s / img.width, s / img.height);
+                      const w = img.width * r, h = img.height * r;
+                      ctx.drawImage(img, (s - w) / 2, (s - h) / 2, w, h);
+                      set('logo', c.toDataURL('image/png'));
+                    };
+                    img.src = reader.result;
+                  };
+                  reader.readAsDataURL(file);
+                  e.target.value = '';
+                }} />
+              </label>
+              {f.logo && <button onClick={() => set('logo', '')} className="text-sm font-medium" style={{ color: T.rust }}>Rimuovi</button>}
+            </div>
+            <div className="text-xs mt-1.5" style={{ color: T.inkSoft }}>Ricorda di premere "Salva impostazioni" per renderlo visibile a tutti.</div>
+          </Field>
+        )}
+        {isOwner && (
           <div className="flex items-center gap-3 mt-4">
             <button onClick={save} className="px-4 py-2 rounded-lg text-sm font-semibold text-white inline-flex items-center gap-1.5" style={{ background: T.brass }}><Save size={14} />Salva impostazioni</button>
             {saved && <span className="text-xs font-medium" style={{ color: T.sage }}>Salvato ✓</span>}
@@ -1548,7 +1799,7 @@ function Impostazioni({ data, mutate, role, orgId }) {
                 reader.onload = () => {
                   try {
                     const obj = JSON.parse(reader.result);
-                    ['clienti','cavalli','istruttori','box','lezioni','fatture','eventi','magazzino','documenti'].forEach((k) => { if (Array.isArray(obj[k])) mutate(k, obj[k]); });
+                    ['clienti','cavalli','istruttori','box','lezioni','fatture','eventi','magazzino','documenti','mangimi','diete'].forEach((k) => { if (Array.isArray(obj[k])) mutate(k, obj[k]); });
                     if (obj.impostazioni) mutate('impostazioni', obj.impostazioni);
                     alert('Backup importato con successo.');
                   } catch { alert('File di backup non valido.'); }
@@ -1625,6 +1876,7 @@ export default function App({ data, mutate, role, orgId, onLogout }) {
     dashboard: <Dashboard data={data} setActive={openSection} role={role} />,
     soci: <Soci data={data} mutate={mutate} />,
     cavalli: <Cavalli data={data} mutate={mutate} />,
+    alimentazione: <Alimentazione data={data} mutate={mutate} />,
     calendario: <Calendario data={data} mutate={mutate} />,
     istruttori: <Istruttori data={data} mutate={mutate} />,
     box: <BoxModule data={data} mutate={mutate} />,
@@ -1650,6 +1902,7 @@ export default function App({ data, mutate, role, orgId, onLogout }) {
       <div className="flex-1 min-w-0">
         <div className="md:hidden sticky top-0 z-20 flex items-center gap-3 px-4 py-3" style={{ background: T.forest }}>
           <button onClick={() => setNavOpen(true)} className="p-1.5 rounded-lg" aria-label="Apri menu"><Menu size={20} color={T.brassLight} /></button>
+          {impostazioni?.logo && <img src={impostazioni.logo} alt="" className="w-7 h-7 rounded-lg object-contain" style={{ background: '#FFFFFF' }} />}
           <span className="font-serif text-white truncate">{impostazioni?.nome || 'Scuderia'}</span>
         </div>
         <main key={active} className="p-4 md:p-8 max-w-[1400px] eq-page">

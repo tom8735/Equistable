@@ -9,8 +9,8 @@ const T = {
 function HorseshoeMark({ size = 24, color = 'currentColor' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <path d="M6 22V12.5C6 8.36 8.69 5 12 5s6 3.36 6 7.5V22" stroke={color} strokeWidth="2" strokeLinecap="round" />
-      <path d="M9 22v-9.2C9 10.1 10.34 8 12 8s3 2.1 3 4.8V22" stroke={color} strokeWidth="1.4" strokeLinecap="round" opacity="0.55" />
+      <path d="M6.5 21 V12.5 C6.5 7.25 8.95 3.5 12 3.5 c3.05 0 5.5 3.75 5.5 9 V21" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M10.1 21 c0-2.6 -0.9-3.7 -0.9-5.5 c0-2.3 1.15-3.55 2.3-3.85 l0.7-1.5 0.85 1.55 c1.3 0.45 2.05 1.5 2.05 2.45 l-1.15 0.4 c-0.4 0.15 -0.65 0.5 -0.65 0.9 c0 1.45 0.8 2.5 0.8 5.55 Z" fill={color} />
     </svg>
   );
 }

@@ -50,6 +50,10 @@ create index on public.fatture (org_id);
 create index on public.eventi (org_id);
 create index on public.magazzino (org_id);
 create index on public.documenti (org_id);
+create table public.mangimi     (id text primary key, org_id uuid not null references public.orgs(id) on delete cascade, data jsonb not null, updated_at timestamptz default now());
+create table public.diete       (id text primary key, org_id uuid not null references public.orgs(id) on delete cascade, data jsonb not null, updated_at timestamptz default now());
+create index on public.mangimi (org_id);
+create index on public.diete (org_id);
 
 -- ============================================================
 -- HELPER: l'utente è membro / owner di questa org?
@@ -116,6 +120,8 @@ alter table public.fatture enable row level security;
 alter table public.eventi enable row level security;
 alter table public.magazzino enable row level security;
 alter table public.documenti enable row level security;
+alter table public.mangimi enable row level security;
+alter table public.diete enable row level security;
 alter table public.impostazioni enable row level security;
 
 create policy "org visibile ai membri" on public.orgs for select using (public.is_member(id));
@@ -131,6 +137,8 @@ create policy "membri rw" on public.lezioni    for all using (public.is_member(o
 create policy "membri rw" on public.eventi     for all using (public.is_member(org_id)) with check (public.is_member(org_id));
 create policy "membri rw" on public.magazzino  for all using (public.is_member(org_id)) with check (public.is_member(org_id));
 create policy "membri rw" on public.documenti  for all using (public.is_member(org_id)) with check (public.is_member(org_id));
+create policy "membri rw" on public.mangimi    for all using (public.is_member(org_id)) with check (public.is_member(org_id));
+create policy "membri rw" on public.diete      for all using (public.is_member(org_id)) with check (public.is_member(org_id));
 
 -- FATTURAZIONE: solo il titolare
 create policy "owner only" on public.fatture for all using (public.is_owner(org_id)) with check (public.is_owner(org_id));
@@ -146,4 +154,4 @@ create policy "owner aggiorna" on public.impostazioni for update using (public.i
 alter publication supabase_realtime add table
   public.clienti, public.cavalli, public.istruttori, public.box,
   public.lezioni, public.fatture, public.eventi, public.magazzino,
-  public.documenti, public.impostazioni;
+  public.documenti, public.impostazioni, public.mangimi, public.diete;
