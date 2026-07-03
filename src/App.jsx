@@ -5,7 +5,7 @@ import {
   ChevronLeft, AlertTriangle, CheckCircle2, Clock, Phone, Mail, TrendingUp,
   Syringe, Hammer, Stethoscope, MapPin, Filter, Save, ArrowUpRight, ArrowDownRight, Menu
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, LineChart, Line, ReferenceLine, Cell } from 'recharts';
 
 /* ============================= DESIGN TOKENS ============================= */
 const T = {
@@ -128,6 +128,28 @@ function Field({ label, children }) {
 }
 const inputCls = "w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 bg-white";
 const inputStyle = { borderColor: T.line };
+
+/** Select con opzioni fisse + voce "Altro…" che apre un campo libero. */
+function SelectAltro({ value, onChange, options }) {
+  const isCustom = value !== undefined && value !== null && value !== '' && !options.includes(value);
+  const [custom, setCustom] = useState(isCustom);
+  return (
+    <div>
+      <select className={inputCls} style={inputStyle} value={custom || isCustom ? '__altro__' : value}
+        onChange={(e) => {
+          if (e.target.value === '__altro__') { setCustom(true); onChange(''); }
+          else { setCustom(false); onChange(e.target.value); }
+        }}>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        <option value="__altro__">Altro…</option>
+      </select>
+      {(custom || isCustom) && (
+        <input className={inputCls} style={{ ...inputStyle, marginTop: 6 }} placeholder="Specificare…" autoFocus
+          value={value} onChange={(e) => onChange(e.target.value)} />
+      )}
+    </div>
+  );
+}
 
 function Modal({ title, onClose, children, wide }) {
   useEffect(() => {
@@ -322,17 +344,53 @@ function Dashboard({ data, setActive, role }) {
             <h3 className="font-serif text-lg" style={{ color: T.ink }}>Incassi ultimi mesi</h3>
             <Pill tone={fattureSospese > 0 ? 'warn' : 'good'}>{fattureSospese > 0 ? `${euro(fattureSospese)} da incassare` : 'Tutto incassato'}</Pill>
           </div>
-          <div style={{ width: '100%', height: 240 }}>
-            <ResponsiveContainer>
-              <BarChart data={revenueByMonth}>
-                <CartesianGrid strokeDasharray="3 3" stroke={T.line} vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 12, fill: T.inkSoft }} axisLine={{ stroke: T.line }} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: T.inkSoft }} axisLine={false} tickLine={false} width={40} />
-                <Tooltip formatter={(v) => euro(v)} contentStyle={{ borderRadius: 12, borderColor: T.line, fontSize: 13 }} />
-                <Bar dataKey="incasso" fill={T.brass} radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {revenueByMonth.length === 0 ? (
+            <EmptyState icon={Wallet} text="Nessun incasso registrato" sub="I dati appariranno quando registrerai le prime fatture pagate" />
+          ) : (() => {
+            const media = revenueByMonth.reduce((s, r) => s + r.incasso, 0) / revenueByMonth.length;
+            const best = revenueByMonth.reduce((m, r) => (r.incasso > (m ? m.incasso : -1) ? r : m), null);
+            const last = revenueByMonth[revenueByMonth.length - 1];
+            const prev = revenueByMonth[revenueByMonth.length - 2];
+            const trend = prev && prev.incasso > 0 ? ((last.incasso - prev.incasso) / prev.incasso) * 100 : null;
+            return (
+              <>
+                <div className="flex flex-wrap gap-x-6 gap-y-2 mb-4">
+                  <div><div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: T.inkSoft }}>Media mensile</div><div className="font-mono text-sm font-semibold" style={{ color: T.ink }}>{euro(media)}</div></div>
+                  <div><div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: T.inkSoft }}>Mese migliore</div><div className="font-mono text-sm font-semibold" style={{ color: T.brassDark }}>{best.month} · {euro(best.incasso)}</div></div>
+                  {trend !== null && (
+                    <div><div className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: T.inkSoft }}>Vs mese prec.</div>
+                      <div className="font-mono text-sm font-semibold inline-flex items-center gap-1" style={{ color: trend >= 0 ? T.sage : T.rust }}>
+                        {trend >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}{Math.abs(trend).toFixed(0)}%
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div style={{ width: '100%', height: 240 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={revenueByMonth} barSize={36}>
+                      <defs>
+                        <linearGradient id="eqGold" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={T.brassLight} />
+                          <stop offset="100%" stopColor={T.brassDark} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke={T.line} vertical={false} />
+                      <XAxis dataKey="month" tick={{ fontSize: 12, fill: T.inkSoft }} axisLine={{ stroke: T.line }} tickLine={false} />
+                      <YAxis tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1).replace('.0', '')}k` : v)} tick={{ fontSize: 12, fill: T.inkSoft }} axisLine={false} tickLine={false} width={44} />
+                      <Tooltip formatter={(v) => [euro(v), 'Incasso']} cursor={{ fill: 'rgba(184,134,62,0.08)' }}
+                        contentStyle={{ borderRadius: 12, border: `1px solid ${T.line}`, boxShadow: '0 8px 24px rgba(38,34,28,0.12)', fontSize: 13 }} />
+                      <ReferenceLine y={media} stroke={T.sage} strokeDasharray="4 4" label={{ value: 'media', position: 'insideTopRight', fontSize: 11, fill: T.sage }} />
+                      <Bar dataKey="incasso" radius={[8, 8, 0, 0]}>
+                        {revenueByMonth.map((r, i) => (
+                          <Cell key={i} fill={best && r.month === best.month ? T.brass : 'url(#eqGold)'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            );
+          })()}
         </Card>}
 
         <Card className={role === 'owner' ? 'p-6' : 'p-6 lg:col-span-3'}>
@@ -400,9 +458,7 @@ function ClienteForm({ initial, onSave, onCancel, cavalli }) {
       </div>
       <div className="grid grid-cols-3 gap-3">
         <Field label="Tipo tessera">
-          <select className={inputCls} style={inputStyle} value={f.tessera} onChange={(e) => set('tessera', e.target.value)}>
-            <option>Base</option><option>Standard</option><option>Premium</option>
-          </select>
+          <SelectAltro value={f.tessera} onChange={(v) => set('tessera', v)} options={['Base', 'Standard', 'Premium']} />
         </Field>
         <Field label="Stato">
           <select className={inputCls} style={inputStyle} value={f.stato} onChange={(e) => set('stato', e.target.value)}>
@@ -413,9 +469,7 @@ function ClienteForm({ initial, onSave, onCancel, cavalli }) {
       </div>
       <div className="grid grid-cols-3 gap-3">
         <Field label="Patente FISE">
-          <select className={inputCls} style={inputStyle} value={f.patenteFise} onChange={(e) => set('patenteFise', e.target.value)}>
-            <option>Nessuna</option><option>Patente A</option><option>Autorizzazione Pony</option><option>Brevetto B</option><option>1° grado</option><option>2° grado</option>
-          </select>
+          <SelectAltro value={f.patenteFise} onChange={(v) => set('patenteFise', v)} options={['Nessuna', 'Patente A', 'Autorizzazione Pony', 'Brevetto B', '1° grado', '2° grado']} />
         </Field>
         <Field label="N. tessera FISE"><input className={inputCls} style={inputStyle} value={f.tesseraFise} onChange={(e) => set('tesseraFise', e.target.value)} /></Field>
         <Field label="Scad. tesseramento"><input type="date" className={inputCls} style={inputStyle} value={f.scadenzaFise} onChange={(e) => set('scadenzaFise', e.target.value)} /></Field>
@@ -569,16 +623,12 @@ function CavalloForm({ initial, onSave, onCancel, clienti, box }) {
         </Field>
         <Field label="Data di nascita"><input type="date" className={inputCls} style={inputStyle} value={f.nascita} onChange={(e) => set('nascita', e.target.value)} /></Field>
         <Field label="Mantello">
-          <select className={inputCls} style={inputStyle} value={f.mantello} onChange={(e) => set('mantello', e.target.value)}>
-            {Object.keys(MANTELLI).map((m) => <option key={m}>{m}</option>)}
-          </select>
+          <SelectAltro value={f.mantello} onChange={(v) => set('mantello', v)} options={Object.keys(MANTELLI)} />
         </Field>
       </div>
       <div className="grid grid-cols-3 gap-3">
         <Field label="Tipo">
-          <select className={inputCls} style={inputStyle} value={f.tipo} onChange={(e) => set('tipo', e.target.value)}>
-            <option>Scuola</option><option>Pensione</option><option>Allevamento</option><option>Vendita</option>
-          </select>
+          <SelectAltro value={f.tipo} onChange={(v) => set('tipo', v)} options={['Scuola', 'Pensione', 'Allevamento', 'Vendita']} />
         </Field>
         <Field label="Proprietario / pensionante">
           <select className={inputCls} style={inputStyle} value={f.proprietarioId || ''} onChange={(e) => set('proprietarioId', e.target.value || null)}>
@@ -796,9 +846,7 @@ function LezioneForm({ initial, onSave, onCancel, istruttori, cavalli, clienti }
         </Field>
       </div>
       <Field label="Tipo di lezione">
-        <select className={inputCls} style={inputStyle} value={f.tipo} onChange={(e) => set('tipo', e.target.value)}>
-          <option>Privata</option><option>Gruppo</option><option>Salto ostacoli</option><option>Dressage</option><option>Passeggiata</option>
-        </select>
+        <SelectAltro value={f.tipo} onChange={(v) => set('tipo', v)} options={['Privata', 'Gruppo', 'Salto ostacoli', 'Dressage', 'Passeggiata']} />
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Istruttore">
@@ -1023,9 +1071,7 @@ function BoxForm({ initial, onSave, onCancel, onDelete, cavalli, nextNumero }) {
       <div className="grid grid-cols-2 gap-3">
         <Field label="Numero"><input type="number" className={inputCls} style={inputStyle} value={f.numero} onChange={(e) => set('numero', Number(e.target.value))} /></Field>
         <Field label="Tipo">
-          <select className={inputCls} style={inputStyle} value={f.tipo} onChange={(e) => set('tipo', e.target.value)}>
-            <option>Box</option><option>Paddock</option>
-          </select>
+          <SelectAltro value={f.tipo} onChange={(v) => set('tipo', v)} options={['Box', 'Paddock']} />
         </Field>
       </div>
       <Field label="Dimensione"><input className={inputCls} style={inputStyle} value={f.dimensione} onChange={(e) => set('dimensione', e.target.value)} /></Field>
@@ -1085,7 +1131,7 @@ function BoxModule({ data, mutate }) {
           return (
             <Card key={b.id} className="p-4 cursor-pointer hover:shadow-md transition-shadow text-center" onClick={() => setModal({ mode: 'edit', item: b })}
               style={{ background: cavallo ? '#F9F6EF' : T.card, borderStyle: isPad ? 'dashed' : 'solid' }}>
-              <div className="text-xs font-mono font-semibold mb-2" style={{ color: isPad ? T.sage : T.brassDark }}>{isPad ? 'PADDOCK' : 'BOX'} {b.numero}</div>
+              <div className="text-xs font-mono font-semibold mb-2" style={{ color: isPad ? T.sage : T.brassDark }}>{(b.tipo || 'Box').toUpperCase()} {b.numero}</div>
               {cavallo ? (
                 <>
                   <CoatBadge nome={cavallo.nome} mantello={cavallo.mantello} size={40} />
@@ -1135,9 +1181,7 @@ function FatturaForm({ initial, onSave, onCancel, clienti }) {
           </select>
         </Field>
         <Field label="Metodo di pagamento">
-          <select className={inputCls} style={inputStyle} value={f.metodo} onChange={(e) => set('metodo', e.target.value)}>
-            <option>—</option><option>Contanti</option><option>Bonifico</option><option>Carta</option>
-          </select>
+          <SelectAltro value={f.metodo} onChange={(v) => set('metodo', v)} options={['—', 'Contanti', 'Bonifico', 'Carta']} />
         </Field>
       </div>
       <div className="flex justify-end gap-2 mt-4">
@@ -1224,9 +1268,7 @@ function EventoForm({ initial, onSave, onCancel }) {
       <Field label="Nome evento"><input className={inputCls} style={inputStyle} value={f.nome} onChange={(e) => set('nome', e.target.value)} /></Field>
       <div className="grid grid-cols-3 gap-3">
         <Field label="Tipo">
-          <select className={inputCls} style={inputStyle} value={f.tipo} onChange={(e) => set('tipo', e.target.value)}>
-            <option>Gara</option><option>Clinic</option><option>Evento sociale</option><option>Altro</option>
-          </select>
+          <SelectAltro value={f.tipo} onChange={(v) => set('tipo', v)} options={['Gara', 'Clinic', 'Evento sociale']} />
         </Field>
         <Field label="Data"><input type="date" className={inputCls} style={inputStyle} value={f.data} onChange={(e) => set('data', e.target.value)} /></Field>
         <Field label="Luogo"><input className={inputCls} style={inputStyle} value={f.luogo} onChange={(e) => set('luogo', e.target.value)} /></Field>
@@ -1306,9 +1348,7 @@ function MagazzinoForm({ initial, onSave, onCancel }) {
       <Field label="Articolo"><input className={inputCls} style={inputStyle} value={f.nome} onChange={(e) => set('nome', e.target.value)} /></Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Categoria">
-          <select className={inputCls} style={inputStyle} value={f.categoria} onChange={(e) => set('categoria', e.target.value)}>
-            <option>Mangime</option><option>Lettiera</option><option>Farmaci</option><option>Attrezzatura</option>
-          </select>
+          <SelectAltro value={f.categoria} onChange={(v) => set('categoria', v)} options={['Mangime', 'Lettiera', 'Farmaci', 'Attrezzatura']} />
         </Field>
         <Field label="Fornitore"><input className={inputCls} style={inputStyle} value={f.fornitore} onChange={(e) => set('fornitore', e.target.value)} /></Field>
       </div>
@@ -1389,9 +1429,7 @@ function DocumentoForm({ initial, onSave, onCancel }) {
       <Field label="Nome documento"><input className={inputCls} style={inputStyle} value={f.nome} onChange={(e) => set('nome', e.target.value)} /></Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Tipo">
-          <select className={inputCls} style={inputStyle} value={f.tipo} onChange={(e) => set('tipo', e.target.value)}>
-            <option>Certificato medico</option><option>Assicurazione</option><option>Contratto</option><option>Documento cavallo</option><option>Altro</option>
-          </select>
+          <SelectAltro value={f.tipo} onChange={(v) => set('tipo', v)} options={['Certificato medico', 'Assicurazione', 'Contratto', 'Documento cavallo']} />
         </Field>
         <Field label="Associato a"><input className={inputCls} style={inputStyle} value={f.associato} onChange={(e) => set('associato', e.target.value)} /></Field>
       </div>
