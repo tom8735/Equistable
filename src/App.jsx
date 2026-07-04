@@ -749,13 +749,29 @@ function Cavalli({ data, mutate }) {
   });
 
   const save = (f) => {
-    let next;
-    if (f.id) next = cavalli.map((h) => (h.id === f.id ? f : h));
-    else next = [...cavalli, { ...f, id: uid('h') }];
-    mutate('cavalli', next);
+    const isNew = !f.id;
+    const nuovo = isNew ? { ...f, id: uid('h') } : f;
+    const nextCavalli = isNew ? [...cavalli, nuovo] : cavalli.map((h) => (h.id === nuovo.id ? nuovo : h));
+    mutate('cavalli', nextCavalli);
+    // Sincronizza box: il box scelto ora ha questo cavallo, gli altri box che avevano questo cavallo si liberano.
+    const prev = isNew ? null : cavalli.find((h) => h.id === nuovo.id);
+    const prevBoxId = prev ? prev.boxId : null;
+    if (prevBoxId !== nuovo.boxId) {
+      const nextBox = box.map((b) => {
+        if (b.id === nuovo.boxId) return { ...b, cavalloId: nuovo.id };
+        if (b.cavalloId === nuovo.id && b.id !== nuovo.boxId) return { ...b, cavalloId: null };
+        return b;
+      });
+      mutate('box', nextBox);
+    }
     setModal(null);
   };
-  const remove = (id) => { mutate('cavalli', cavalli.filter((h) => h.id !== id)); setDel(null); setDetail(null); };
+  const remove = (id) => {
+    mutate('cavalli', cavalli.filter((h) => h.id !== id));
+    const boxAssociato = box.find((b) => b.cavalloId === id);
+    if (boxAssociato) mutate('box', box.map((b) => (b.cavalloId === id ? { ...b, cavalloId: null } : b)));
+    setDel(null); setDetail(null);
+  };
   const proprietarioNome = (id) => id ? (clienti.find((c) => c.id === id) ? `${clienti.find((c) => c.id === id).nome} ${clienti.find((c) => c.id === id).cognome}` : '—') : 'Scuderia';
   const boxNum = (id) => box.find((b) => b.id === id)?.numero;
 
@@ -1125,8 +1141,31 @@ function BoxModule({ data, mutate }) {
   const sorted = [...box].sort((a, b) => a.numero - b.numero);
 
   const save = (f) => {
-    if (f.id) mutate('box', box.map((b) => (b.id === f.id ? f : b)));
-    else mutate('box', [...box, { ...f, id: uid('b') }]);
+    const isNew = !f.id;
+    const nuovo = isNew ? { ...f, id: uid('b') } : f;
+    const nextBoxLocal = isNew ? [...box, nuovo] : box.map((b) => (b.id === nuovo.id ? nuovo : b));
+    const prev = isNew ? null : box.find((b) => b.id === nuovo.id);
+    const prevCavalloId = prev ? prev.cavalloId : null;
+
+    // Se il cavallo assegnato al box e' cambiato, sincronizza cavalli e libera l'altro box
+    if (prevCavalloId !== nuovo.cavalloId) {
+      const nuovoCav = nuovo.cavalloId;
+      // Aggiorna cavalli: quello nuovo punta a questo box, quello vecchio si libera
+      const nextCavalli = cavalli.map((h) => {
+        if (h.id === nuovoCav) return { ...h, boxId: nuovo.id };
+        if (prevCavalloId && h.id === prevCavalloId) return { ...h, boxId: null };
+        return h;
+      });
+      // Libera eventuale altro box che aveva gia' questo cavallo
+      const finalBox = nextBoxLocal.map((b) => {
+        if (nuovoCav && b.id !== nuovo.id && b.cavalloId === nuovoCav) return { ...b, cavalloId: null };
+        return b;
+      });
+      mutate('cavalli', nextCavalli);
+      mutate('box', finalBox);
+    } else {
+      mutate('box', nextBoxLocal);
+    }
     setModal(null);
   };
   const remove = (id) => { mutate('box', box.filter((b) => b.id !== id)); setModal(null); };
